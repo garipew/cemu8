@@ -13,11 +13,6 @@ Opcode fetch_instruction(Chip *c){
 	return chip_no_op;
 }
 
-/* chipfunc_t parse_instruction(int, Opcode, FILE*, ChipArgs*)
- * This function writes the next instruction to FILE* and
- * fill ChipArgs*
- * return a function pointer equivalent to the parsed instruction.
- */
 void parse_instruction(Opcode op, FILE *stream, ChipArgs *args){
 	switch(op&0xf000){
 #define FUNC(arg) \
@@ -52,13 +47,15 @@ int main(int argc, char **argv){
 	load_game(&chip8, rom_file);
 	fclose(rom_file);
 
+#ifndef PARSER
 	chipfunc_t f;
+#endif
 	fprintf(stdout, "/* %s */\n\n", argv[1]);
 	for(Opcode op; (op=fetch_instruction(&chip8)) != chip_no_op; ){
 		fprintf(stdout, "0x%04x:\t%02x %02x\t", chip8.pc, (op>>8)&0xff, op&0xff);
 		chip8.pc+=2;
 		parse_instruction(op, stdout, &args);
-#ifdef RUN
+#ifndef PARSER
 		f = fn_table[idx_from_opcode(op)];
 		f(&args);
 #endif
