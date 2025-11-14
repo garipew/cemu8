@@ -22,54 +22,6 @@
 #define pop(c) \
 	c->stack[--c->sp]
 
-typedef enum  {
-	NO_OP,
-	LOW_OP = 0x0000,
-	ASM_CALL = 0x0000,
-	CLEAR = 0xE0,
-	RETURN = 0xEE,
-
-	JP = 0x1000,
-	FUNCTION_CALL = 0x2000,
-	SKIP_EQ = 0x3000,
-	SKIP_NE = 0x4000,
-	JEI = 0x5000,
-	SET_REG = 0x6000,
-	ADDI = 0x7000,
-
-	CALC = 0x8000,
-	SET_VX = 0x8000,
-	OR = 0x8001,
-	AND = 0x8002,
-	XOR = 0x8003,
-	ADD = 0x8004,
-	X_SUB_Y = 0x8005,
-	SHIFT_R = 0x8006,
-	Y_SUB_X = 0x8007,
-	SHIFT_L = 0x800E,
-
-	JNI = 0x9000,
-	SET_I = 0xA000,
-	JP_OFFSET = 0xB000,
-	RAND = 0xC000,
-	DRAW = 0xD000,
-
-	KEYS = 0xE000,
-	KEY_EQ = 0xE09E,
-	KEY_NEQ = 0xE0A1,
-
-	EXTRA = 0xF000,
-	GET_DELAY = 0xF007,
-	GET_KEY = 0xF00A,
-	SET_DELAY = 0xF015,
-	SET_SOUND = 0xF018,
-	ADD_ADDR = 0xF01E,
-	SET_FONT = 0xF029,
-	WRITE_VX = 0xF033,
-	DUMP = 0xF055,
-	LOAD = 0xF065
-} Opcode;
-
 typedef struct chip{
 	/* wider type first to force alignment, then no gaps? */
 	uint32_t stack[STACK_LEVELS]; 
@@ -91,4 +43,52 @@ typedef struct chip{
 
 void initialize(Chip*);
 void load_game(Chip*, FILE*);
+
+typedef enum  {
+	chip_no_op,
+	chip_low_op = 0x0000,
+	chip_asm_call = 0x0000,
+	chip_clear = 0xe0,
+	chip_return = 0xee,
+
+	chip_jp = 0x1000,
+	chip_call = 0x2000,
+	chip_skip_eq = 0x3000,
+	chip_skip_ne = 0x4000,
+	chip_jei = 0x5000,
+	chip_set_reg = 0x6000,
+	chip_addi = 0x7000,
+
+	chip_calc = 0x8000,
+	chip_set_vx = 0x8000,
+	chip_or = 0x8001,
+	chip_and = 0x8002,
+	chip_xor = 0x8003,
+	chip_add = 0x8004,
+	chip_x_sub_y = 0x8005,
+	chip_shift_r = 0x8006,
+	chip_y_sub_x = 0x8007,
+	chip_shift_l = 0x800e,
+
+	chip_jni = 0x9000,
+	chip_set_i = 0xa000,
+	chip_jp_offset = 0xb000,
+	chip_rand = 0xc000,
+	chip_draw = 0xd000,
+
+	chip_keys = 0xe000,
+	chip_key_eq = 0xe09e,
+	chip_key_neq = 0xe0a1,
+
+	chip_extra = 0xf000,
+	chip_get_delay = 0xf007,
+	chip_get_key = 0xf00a,
+	chip_set_delay = 0xf015,
+	chip_set_sound = 0xf018,
+	chip_add_addr = 0xf01e,
+	chip_set_font = 0xf029,
+	chip_write_vx = 0xf033,
+	chip_dump = 0xf055,
+	chip_load = 0xf065
+} Opcode;
 #endif
