@@ -44,6 +44,11 @@ typedef struct chip{
 void initialize(Chip*);
 void load_game(Chip*, FILE*);
 
+typedef struct {
+	uint16_t op;
+	Chip *chip;
+} ChipArgs;
+
 typedef enum  {
 	chip_no_op,
 	chip_low_op = 0x0000,
@@ -56,7 +61,7 @@ typedef enum  {
 	chip_skip_eq = 0x3000,
 	chip_skip_ne = 0x4000,
 	chip_jei = 0x5000,
-	chip_set_reg = 0x6000,
+	chip_set_v = 0x6000,
 	chip_addi = 0x7000,
 
 	chip_calc = 0x8000,
@@ -80,15 +85,47 @@ typedef enum  {
 	chip_key_eq = 0xe09e,
 	chip_key_neq = 0xe0a1,
 
-	chip_extra = 0xf000,
+	chip_high_op = 0xf000,
 	chip_get_delay = 0xf007,
 	chip_get_key = 0xf00a,
 	chip_set_delay = 0xf015,
 	chip_set_sound = 0xf018,
 	chip_add_addr = 0xf01e,
 	chip_set_font = 0xf029,
-	chip_write_vx = 0xf033,
+	chip_store_bcd = 0xf033,
 	chip_dump = 0xf055,
 	chip_load = 0xf065
 } Opcode;
+
+// NOTE(garipew): This list does not include every opcode. It only contains
+// opcodes with unique most significant NIBBLE. That is, only the hex(X000).
+#define OPCODE_LIST \
+	FUNC(chip_low_op) \
+	FUNC(chip_jp) \
+	FUNC(chip_call) \
+	FUNC(chip_skip_eq) \
+	FUNC(chip_skip_ne) \
+	FUNC(chip_jei) \
+	FUNC(chip_set_v) \
+	FUNC(chip_addi) \
+	FUNC(chip_calc) \
+	FUNC(chip_jni) \
+	FUNC(chip_set_i) \
+	FUNC(chip_jp_offset) \
+	FUNC(chip_rand) \
+	FUNC(chip_draw) \
+	FUNC(chip_keys) \
+	FUNC(chip_high_op)
+
+#define FUNC(arg) \
+	void arg##_fn(ChipArgs*);
+OPCODE_LIST
+#undef FUNC
+// chip functions
+typedef void (*chipfunc_t)(ChipArgs*);
+
+#define idx_from_opcode(op) \
+	(op>>12)&0xf
+extern chipfunc_t fn_table[0x10];
+void load_fn_table();
 #endif
