@@ -1,5 +1,5 @@
 # cemu8
-⚠️ Work in Progress ⚠️
+## ⚠️ Work in Progress ⚠️
 This is a chip8 emulator made in C.
 
 ## Building
