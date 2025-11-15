@@ -30,7 +30,6 @@ typedef struct chip{
 
 	uint16_t I; 
 	uint16_t pc;
-	uint16_t op;
 
 	uint8_t delay_timer;
 	uint8_t sound_timer;
@@ -44,11 +43,6 @@ typedef struct chip{
 
 void initialize(Chip*);
 void load_game(Chip*, FILE*);
-
-typedef struct {
-	uint16_t op;
-	Chip *chip;
-} ChipArgs;
 
 typedef enum  {
 	chip_no_op,
@@ -118,10 +112,16 @@ typedef enum  {
 	FUNC(chip_keys) \
 	FUNC(chip_high_op)
 
+typedef struct {
+	Opcode op;
+	Chip *chip;
+} ChipArgs;
+
 #define FUNC(arg) \
 	void arg##_fn(ChipArgs*);
 OPCODE_LIST
 #undef FUNC
+
 // chip functions
 typedef void (*chipfunc_t)(ChipArgs*);
 

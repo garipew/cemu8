@@ -15,7 +15,7 @@ To execute
 ```
 
 ## Next steps
-- [ ] Add 60Hz clock
+- [x] Add 60Hz clock
 - [ ] Add graphics
 - [ ] Add native support for input
 - [ ] Add joystick support?

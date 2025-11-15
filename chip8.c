@@ -16,7 +16,6 @@ void load_fn_table(){
 void initialize(Chip* c){
 	c->pc = 0x200;
 	c->sp = 0;
-	c->op = chip_no_op;
 	c->I = 0;
 	c->delay_timer = 60;
 	c->sound_timer = 60;
