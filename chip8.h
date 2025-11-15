@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#define FONT_WID 5
+
 #define COL 64
 #define ROW 32
 
@@ -28,16 +30,15 @@ typedef struct chip{
 
 	uint16_t I; 
 	uint16_t pc;
+	uint16_t op;
 
-	uint8_t memory[MEM_SIZE]; 
-	uint8_t v[0x10]; 
 	uint8_t delay_timer;
 	uint8_t sound_timer;
 
-	uint16_t op;
 	uint8_t sp; 
+	uint8_t v[0x10]; 
 	uint8_t keys[16]; 
-
+	uint8_t memory[MEM_SIZE]; 
 	uint8_t display[COL][ROW]; 
 } Chip;
 

@@ -20,13 +20,11 @@ void parse_instruction(Opcode op, FILE *stream, ChipArgs *args){
 			fprintf(stream, #arg); \
 			fprintf(stream, " nnn = 0x%x\n", op&0xfff); \
 			args->op = op; \
-			break;
+			return;
 		OPCODE_LIST
 #undef FUNC
-		default:
-			fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
-			break;
 	}
+	fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
 }
 
 int main(int argc, char **argv){
@@ -52,7 +50,8 @@ int main(int argc, char **argv){
 #endif
 	fprintf(stdout, "/* %s */\n\n", argv[1]);
 	for(Opcode op; (op=fetch_instruction(&chip8)) != chip_no_op; ){
-		fprintf(stdout, "0x%04x:\t%02x %02x\t", chip8.pc, (op>>8)&0xff, op&0xff);
+		fprintf(stdout, "0x%x:\t", chip8.pc);
+		fprintf(stdout, "%.2x %.2x\t", (op>>8), op&0xff);
 		chip8.pc+=2;
 		parse_instruction(op, stdout, &args);
 #ifndef PARSER

@@ -23,17 +23,15 @@ void initialize(Chip* c){
 }
 
 void load_game(Chip* chip, FILE* stream){
-	if(chip->sp < STACK_LEVELS){
-		push(chip, chip->pc);
-	} else{
-		printf("Stack Overflow.\n");
+	if(chip->sp >= STACK_LEVELS){
+		fprintf(stderr, "Stack Overflow.\n");
 		return;
-	}
+	} 
+	push(chip, chip->pc);
 	int c;
 	chip->pc = 0x200;
-	while((c = getc(stream)) != EOF){
-		if(chip->pc >= MEM_SIZE){
-			ungetc(c, stream);
+	while(chip->pc < MEM_SIZE){
+		if((c = getc(stream)) == EOF){
 			break;
 		}
 		chip->memory[chip->pc++] = (uint8_t)c;
@@ -41,22 +39,24 @@ void load_game(Chip* chip, FILE* stream){
 	chip->pc = pop(chip);
 }
 
+void chip_clear_fn(Chip *chip){
+	for(int i = 0; i < ROW; i++){ 
+		memset(chip->display, 0, COL*(sizeof(*chip->display))); 
+	}
+}
+
 void chip_low_op_fn(ChipArgs *args){
 	Chip *chip = args->chip;
 	uint16_t op = args->op;
 	switch(op){
 		case chip_clear:
-			for(int i = 0; i < ROW; i++){ 
-				memset(chip->display, 0, COL*(sizeof(*chip->display))); 
-			}
-			break;
+			chip_clear_fn(chip);
+			return;
 		case chip_return:
 			args->chip->pc = pop(args->chip);
-			break;
-		default:
-			fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
-			break;
+			return;
 	}
+	fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
 }
 
 void chip_jp_fn(ChipArgs *args){
@@ -133,18 +133,45 @@ void chip_rand_fn(ChipArgs *args){
 }
 
 void chip_draw_fn(ChipArgs *args){
-	Chip *chip = args->chip;
 	uint16_t op = args->op;
 	uint8_t x = get_x(op);
 	uint8_t y = get_y(op);
 	uint8_t height = op & 0xf;
-	fprintf(stderr, "chip_draw_fn yet not implemented\n");
+	fprintf(stderr, "chip_draw_fn yet not implemented, ");
+	fprintf(stderr, "but args are x=%1x, y=%1x, h=%1x\n", x, y, height);
 }
 
 int get_key(){
 	/* Blocking IO op */
 	fprintf(stderr, "get_key yet not implemented\n");
 	return 0;
+}
+
+void chip_store_bcd_fn(ChipArgs *args){
+	Chip *chip = args->chip;
+	uint16_t op = args->op;
+	uint8_t x = get_x(op);
+	chip->memory[chip->I] = (chip->v[x]%1000 - chip->v[x]%100)/100; 
+	chip->memory[chip->I+1] = (chip->v[x]%100 - chip->v[x]%10)/10; 
+	chip->memory[chip->I+2] = chip->v[x]%10;
+}
+
+void chip_dump_fn(ChipArgs *args){
+	Chip *chip = args->chip;
+	uint16_t op = args->op;
+	uint8_t x = get_x(op);
+	for(int i = 0; i <= x; i++){
+		chip->memory[chip->I + i] = chip->v[i];
+	}
+}
+
+void chip_load_fn(ChipArgs *args){
+	Chip *chip = args->chip;
+	uint16_t op = args->op;
+	uint8_t x = get_x(op);
+	for(int i = 0; i <= x; i++){
+		chip->v[i] = chip->memory[chip->I + i];
+	}
 }
 
 void chip_high_op_fn(ChipArgs *args){
@@ -154,58 +181,49 @@ void chip_high_op_fn(ChipArgs *args){
 	switch(op&0xf0ff){
 		case chip_get_delay:
 			chip->v[x] = chip->delay_timer;
-			break;
+			return;
 		case chip_get_key:
 			chip->v[x] = get_key();
-			break;
+			return;
 		case chip_set_delay:
 			chip->delay_timer = chip->v[x];
-			break;
+			return;
 		case chip_set_sound:
 			chip->sound_timer = chip->v[x];
-			break;
+			return;
 		case chip_add_addr:
 			chip->I += chip->v[x];
-			break;
+			return;
 		case chip_set_font:
-			// chip->I = font[chip->v[x&0xf]];
-			break;
+			chip->I = chip->memory[chip->v[x&0xf]*FONT_WID];
+			return;
 		case chip_store_bcd:
-			chip->memory[chip->I] = (chip->v[x]%1000 - chip->v[x]%100)/100; 
-			chip->memory[chip->I+1] = (chip->v[x]%100 - chip->v[x]%10)/10; 
-			chip->memory[chip->I+2] = chip->v[x]%10;
-			break;
+			chip_store_bcd_fn(args);
+			return;
 		case chip_dump:
-			for(int i = 0; i <= x; i++){
-				chip->memory[chip->I + i] = chip->v[i];
-			}
-			break;
+			chip_dump_fn(args);
+			return;
 		case chip_load:
-			for(int i = 0; i <= x; i++){
-				chip->v[i] = chip->memory[chip->I + i];
-			}
-			break;
-		default:
-			fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
-			break;
+			chip_load_fn(args);
+			return;
 	}
+	fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
 }
 
 void chip_keys_fn(ChipArgs *args){
 	Chip *chip = args->chip;
 	uint16_t op = args->op;
 	uint8_t x = get_x(op);
+	uint8_t key_idx = chip->v[x] & 0xf;
 	switch(op&0xf0ff){
 		case chip_key_eq:
-			if(chip->keys[chip->v[x]]) chip->pc+=2;
-			break;
+			if(chip->keys[key_idx]) chip->pc+=2;
+			return;
 		case chip_key_neq:
-			if(!chip->keys[chip->v[x]]) chip->pc+=2;
-			break;
-		default:
-			fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
-			break;
+			if(!chip->keys[key_idx]) chip->pc+=2;
+			return;
 	}
+	fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
 }
 
 void chip_calc_fn(ChipArgs *args){
@@ -216,41 +234,39 @@ void chip_calc_fn(ChipArgs *args){
 	switch(op&0xf00f){
 		case chip_set_vx:
 			chip->v[x] = chip->v[y];
-			break;
+			return;
 		case chip_or:
 			chip->v[x] |= chip->v[y];
-			break;
+			return;
 		case chip_and:
 			chip->v[x] &= chip->v[y];
-			break;
+			return;
 		case chip_xor:
 			chip->v[x] ^= chip->v[y];
-			break;
+			return;
 		case chip_add:
 			// 0 not 1 overflow
 			chip->v[0xf] = chip->v[x] > 0xff - chip->v[y]; 
 			chip->v[x] += chip->v[y];
-			break;
+			return;
 		case chip_x_sub_y:
 			// 0 underflow 1 not
 			chip->v[0xf] = chip->v[x] >= chip->v[y]; 
 			chip->v[x] -= chip->v[y];
-			break;
+			return;
 		case chip_y_sub_x:
 			// 0 underflow 1 not
 			chip->v[0xf] = chip->v[y] >= chip->v[x]; 
 			chip->v[x] = chip->v[y] - chip->v[x];
-			break;
+			return;
 		case chip_shift_r:
 			chip->v[0xf] = chip->v[x]&0x1; // lsb
 			chip->v[x] >>= 1;
-			break;
+			return;
 		case chip_shift_l:
 			chip->v[0xf] = chip->v[x]&0x80; // msb
 			chip->v[x] <<= 1;
-			break;
-		default:
-			fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
-			break;
+			return;
 	}
+	fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
 }

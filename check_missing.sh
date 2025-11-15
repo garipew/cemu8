@@ -4,4 +4,6 @@ if [ ! -e parser ]; then
 	make parser
 fi
 
-./parser "$1" 2>&1 > /dev/null | sort | uniq | grep -E 'not implemented | Unrecognized'
+missing=$(./parser "$1" 2>&1 >/dev/null) 
+
+echo $missing | sort | uniq | grep -E 'not implemented|Unrecognized'
