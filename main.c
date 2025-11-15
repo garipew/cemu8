@@ -7,11 +7,11 @@
 
 #define CLOCK_HZ 60
 
-#define tick(T) \
-	for(	clock_t die=1,diff,end,st=clock(); \
-		die; \
-		end=clock(),diff=(1000000L*((double)(end-st)/CLOCKS_PER_SEC)),\
-		die=T > diff ? (usleep(T-diff) && 0) : 0) \
+#define tick(till, T) \
+	for(	clock_t tick_t=clock(); \
+		till; \
+		tick_t=((double)(clock()-tick_t)/CLOCKS_PER_SEC)*1000000L,\
+		T > tick_t ? (usleep(T-tick_t) && (tick_t=clock())) : (tick_t=clock())) \
 
 Chip chip8 = {0};
 ChipArgs args = {0};
@@ -77,11 +77,10 @@ int main(int argc, char **argv){
 
 	const useconds_t period = 1000000L/CLOCK_HZ;
 	fprintf(stdout, "/* %s */\n\n", argv[1]);
-	for(int game = 1;  game;){
-		tick(period){
-			//printf("tick tack\n");
-			game = run_cycle();
-		}
+	int game = 1;
+	tick(game, period){
+		//printf("tick tack\n");
+		game = run_cycle();
 	}
 
 	return 0;
