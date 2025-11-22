@@ -40,7 +40,7 @@ void load_game(Chip* chip, FILE* stream){
 
 void chip_clear_fn(Chip *chip){
 	for(int i = 0; i < ROW; i++){ 
-		memset(chip->display, 0, COL*(sizeof(*chip->display))); 
+		memset(chip->display[i], 0, COL); 
 	}
 }
 
@@ -145,10 +145,10 @@ void chip_draw_fn(ChipArgs *args){
 		for(int j = 0; j < 8; j++){
 			bit = (loaded_byte>>(7-j))&0x1;
 			draw_x = (chip->v[x] + j) % COL;
-			if(chip->display[draw_x][draw_y] && bit){
+			if(chip->display[draw_y][draw_x] && bit){
 				chip->v[0xf] = 1;
 			}
-			chip->display[draw_x][draw_y] ^= bit;
+			chip->display[draw_y][draw_x] ^= bit;
 		}
 	}
 }

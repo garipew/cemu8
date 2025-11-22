@@ -39,7 +39,7 @@ typedef struct chip{
 	uint8_t v[0x10]; 
 	uint8_t keys[16]; 
 	uint8_t memory[MEM_SIZE]; 
-	uint8_t display[COL][ROW]; 
+	uint8_t display[ROW][COL]; 
 } Chip;
 
 void initialize(Chip*);

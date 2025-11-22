@@ -94,23 +94,19 @@ void clock_tick(){
 	}
 }
 
-void draw_display(){
-	for(int x, y = 0; y < ROW; y++){
-		for(x = 0; x < COL; x++){
-			if(!chip8.display[x][y]){
-				continue;
-			}
-			DrawRectangle(x<<4, y<<4, PIXEL, PIXEL, WHITE);
-		}
-	}
-}
-
 void co_screen(){
 	InitWindow(COL<<4, ROW<<4, "cemu8");
 	for(; !WindowShouldClose() && is_game; ){
 		BeginDrawing();
 		ClearBackground(BLACK);
-		draw_display();
+		for(int x, y, pixel = 0; pixel < ROW*COL; pixel++){
+			x = pixel % COL;
+			y = pixel / COL;
+			if(!chip8.display[y][x]){
+				continue;
+			}
+			DrawRectangle(x<<4, y<<4, PIXEL, PIXEL, WHITE);
+		}
 		EndDrawing();
 		yield;
 	}
