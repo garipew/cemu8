@@ -1,10 +1,13 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -std=c99 -g -I/usr/local/include/snorkel -L/usr/local/lib
 
-all: chip8 parser
-
 chip8: main.c chip8.o
 	$(CC) $(CFLAGS) -o chip8 chip8.o main.c -lraylib -lsnorkel
+
+all: chip8 parser sanitize
+
+sanitize:
+	$(CC) $(CFLAGS) -o sanitize chip8.o main.c -lraylib -lsnorkel
 
 parser: main.c chip8.o
 	$(CC) $(CFLAGS) -DPARSER -o parser chip8.o main.c -lraylib -lsnorkel
