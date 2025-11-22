@@ -65,7 +65,9 @@ int run_cycle(){
 	fprintf(stdout, "%.2x %.2x\t", (op>>8), op&0xff);
 #endif
 	parse_instruction(op, stdout, &args);
-	chip8.pc+=2;
+	if(chip8.status == RUN){
+		chip8.pc+=2;
+	}
 	f = fn_table[idx_from_opcode(op)];
 	f(&args);
 	return 1;
@@ -141,16 +143,9 @@ void co_cpu(){
 }
 
 void co_input(){
-	for(int i = 0; is_game; i++){
-		if(i > 0xf){
-			yield;
-			i = 0;
-		}
-		if(IsKeyDown(keycodes[i])){
-			chip8.keys[i] = 1;
-			continue;
-		}
-		chip8.keys[i] = 0;
+	for(; is_game; ){
+		get_key(&chip8);
+		yield;
 	}
 }
 

@@ -1,5 +1,4 @@
 # cemu8
-## ⚠️ Work in Progress ⚠️
 This is a chip8 emulator made in C.
 
 ## Building
@@ -20,3 +19,7 @@ To execute
 - [x] Add input capture (also powered by [raylib](https://github.com/raysan5/raylib))
 - [ ] Add joystick support?
 - [ ] Windows port?
+
+
+## Notes
+Tested with [chip8 test suite](https://github.com/Timendus/chip8-test-suite) <3

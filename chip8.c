@@ -3,12 +3,17 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <raylib.h>
+
+////////////////////////////////////////
+///	Chip
+////////////////////////////////////////
 
 chipfunc_t fn_table[0x10];
 
 void load_fn_table(){
 #define FUNC(arg) \
-	fn_table[(arg>>12)&0xf] = arg##_fn; 
+	fn_table[(arg>>12)&0xf] = arg##_fn;
 	OPCODE_LIST
 #undef FUNC
 }
@@ -25,7 +30,7 @@ void load_game(Chip* chip, FILE* stream){
 	if(chip->sp >= STACK_LEVELS){
 		fprintf(stderr, "Stack Overflow.\n");
 		return;
-	} 
+	}
 	push(chip, chip->pc);
 	int c;
 	chip->pc = 0x200;
@@ -39,8 +44,8 @@ void load_game(Chip* chip, FILE* stream){
 }
 
 void chip_clear_fn(Chip *chip){
-	for(int i = 0; i < ROW; i++){ 
-		memset(chip->display[i], 0, COL); 
+	for(int i = 0; i < ROW; i++){
+		memset(chip->display[i], 0, COL);
 	}
 }
 
@@ -79,7 +84,7 @@ void chip_skip_ne_fn(ChipArgs *args){
 	Chip *chip = args->chip;
 	uint16_t op = args->op;
 	uint8_t x = get_x(op);
-	if(chip->v[x] == (op&0xff)) chip->pc+=2;
+	if(chip->v[x] != (op&0xff)) chip->pc+=2;
 }
 
 void chip_jei_fn(ChipArgs *args){
@@ -137,35 +142,35 @@ void chip_draw_fn(ChipArgs *args){
 	uint8_t x = get_x(op);
 	uint8_t y = get_y(op);
 	uint8_t height = op & 0xf;
-	uint8_t loaded_byte, bit, draw_x, draw_y;
-	chip->v[0xf] = 0;
-	for(int i = 0; i < height; i++){
+	uint8_t loaded_byte, bit;
+	uint8_t colision = 0;
+	for(int i = 0, draw_y = (chip->v[y]+i) % ROW; i < height; i++){
+		if(draw_y >= ROW){
+			break;
+		}
 		loaded_byte = chip->memory[chip->I+i];
-		draw_y = (chip->v[y]+i) % ROW;
-		for(int j = 0; j < 8; j++){
+		for(int j = 0, draw_x = (chip->v[x] + j) % COL; j < 8; j++){
+			if(draw_x >= COL){
+				break;
+			}
 			bit = (loaded_byte>>(7-j))&0x1;
-			draw_x = (chip->v[x] + j) % COL;
 			if(chip->display[draw_y][draw_x] && bit){
-				chip->v[0xf] = 1;
+				colision = 1;
 			}
 			chip->display[draw_y][draw_x] ^= bit;
+			draw_x++;
 		}
+		draw_y++;
 	}
-}
-
-int get_key(){
-	/* Blocking IO op */
-	fprintf(stderr, "get_key yet not implemented\n");
-	getchar();
-	return 0;
+	chip->v[0xf] = colision;
 }
 
 void chip_store_bcd_fn(ChipArgs *args){
 	Chip *chip = args->chip;
 	uint16_t op = args->op;
 	uint8_t x = get_x(op);
-	chip->memory[chip->I] = (chip->v[x]%1000 - chip->v[x]%100)/100; 
-	chip->memory[chip->I+1] = (chip->v[x]%100 - chip->v[x]%10)/10; 
+	chip->memory[chip->I] = (chip->v[x]%1000 - chip->v[x]%100)/100;
+	chip->memory[chip->I+1] = (chip->v[x]%100 - chip->v[x]%10)/10;
 	chip->memory[chip->I+2] = chip->v[x]%10;
 }
 
@@ -174,7 +179,7 @@ void chip_dump_fn(ChipArgs *args){
 	uint16_t op = args->op;
 	uint8_t x = get_x(op);
 	for(int i = 0; i <= x; i++){
-		chip->memory[chip->I + i] = chip->v[i];
+		chip->memory[chip->I++] = chip->v[i];
 	}
 }
 
@@ -183,7 +188,25 @@ void chip_load_fn(ChipArgs *args){
 	uint16_t op = args->op;
 	uint8_t x = get_x(op);
 	for(int i = 0; i <= x; i++){
-		chip->v[i] = chip->memory[chip->I + i];
+		chip->v[i] = chip->memory[chip->I++];
+	}
+}
+
+void chip_get_key_fn(Chip *chip, int x){
+	int key = -1;
+	if(chip->status == RUN){
+		chip->v[x] = 0x10;
+		chip->pc -= 2;
+		chip->status = HALT;
+	}
+	key = get_key(chip);
+	if(chip->v[x] != 0x10 && IsKeyUp(keycodes[chip->v[x]])){
+		chip->status = RUN;
+		chip->pc += 2;
+		return;
+	}
+	if(key != -1){
+		chip->v[x] = key;
 	}
 }
 
@@ -196,7 +219,7 @@ void chip_high_op_fn(ChipArgs *args){
 			chip->v[x] = chip->delay_timer;
 			return;
 		case chip_get_key:
-			chip->v[x] = get_key();
+			chip_get_key_fn(chip, x);
 			return;
 		case chip_set_delay:
 			chip->delay_timer = chip->v[x];
@@ -244,42 +267,88 @@ void chip_calc_fn(ChipArgs *args){
 	uint16_t op = args->op;
 	uint8_t x = get_x(op);
 	uint8_t y = get_y(op);
+	uint8_t carry_flag;
 	switch(op&0xf00f){
 		case chip_set_vx:
 			chip->v[x] = chip->v[y];
 			return;
 		case chip_or:
 			chip->v[x] |= chip->v[y];
+			chip->v[0xf] = 0;
 			return;
 		case chip_and:
 			chip->v[x] &= chip->v[y];
+			chip->v[0xf] = 0;
 			return;
 		case chip_xor:
 			chip->v[x] ^= chip->v[y];
+			chip->v[0xf] = 0;
 			return;
 		case chip_add:
 			// 0 not 1 overflow
-			chip->v[0xf] = chip->v[x] > 0xff - chip->v[y]; 
+			carry_flag = chip->v[x] > (0xff - chip->v[y]);
 			chip->v[x] += chip->v[y];
+			chip->v[0xf] = carry_flag;
 			return;
 		case chip_x_sub_y:
 			// 0 underflow 1 not
-			chip->v[0xf] = chip->v[x] >= chip->v[y]; 
+			carry_flag = chip->v[x] >= chip->v[y];
 			chip->v[x] -= chip->v[y];
+			chip->v[0xf] = carry_flag;
 			return;
 		case chip_y_sub_x:
 			// 0 underflow 1 not
-			chip->v[0xf] = chip->v[y] >= chip->v[x]; 
+			carry_flag = chip->v[y] >= chip->v[x];
 			chip->v[x] = chip->v[y] - chip->v[x];
+			chip->v[0xf] = carry_flag;
 			return;
 		case chip_shift_r:
-			chip->v[0xf] = chip->v[x]&0x1; // lsb
-			chip->v[x] >>= 1;
+			carry_flag = chip->v[y]&0x1; // lsb
+			chip->v[x] = chip->v[y]>>1;
+			chip->v[0xf] = carry_flag;
 			return;
 		case chip_shift_l:
-			chip->v[0xf] = chip->v[x]&0x80; // msb
-			chip->v[x] <<= 1;
+			carry_flag = (chip->v[y]>>7)&0x1; // msb
+			chip->v[x] = chip->v[y]<<1;
+			chip->v[0xf] = carry_flag;
 			return;
 	}
 	fprintf(stderr, "(%04x) Unrecognized opcode\n", op);
+}
+
+////////////////////////////////////////////
+///	Input
+////////////////////////////////////////////
+int keycodes[0x10] = {
+    KEY_KP_0,      // Key: Keypad 0
+    KEY_KP_1,      // Key: Keypad 1
+    KEY_KP_2,      // Key: Keypad 2
+    KEY_KP_3,      // Key: Keypad 3
+    KEY_KP_4,      // Key: Keypad 4
+    KEY_KP_5,      // Key: Keypad 5
+    KEY_KP_6,      // Key: Keypad 6
+    KEY_KP_7,      // Key: Keypad 7
+    KEY_KP_8,      // Key: Keypad 8
+    KEY_KP_9,      // Key: Keypad 9
+    KEY_KP_DECIMAL,      // Key: Keypad .
+    KEY_KP_DIVIDE,      // Key: Keypad /
+    KEY_KP_MULTIPLY,      // Key: Keypad *
+    KEY_KP_SUBTRACT,      // Key: Keypad -
+    KEY_KP_ADD,      // Key: Keypad +
+    KEY_KP_ENTER      // Key: Keypad Enter
+};
+
+int get_key(Chip *chip){
+	int key = -1;
+	for(int i = 0; i <= 0xf; i++){
+		if(IsKeyDown(keycodes[i])){
+			chip->keys[i] = 1;
+			if(key == -1){
+				key = i;
+			}
+			continue;
+		}
+		chip->keys[i] = 0;
+	}
+	return key;
 }

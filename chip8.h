@@ -30,6 +30,11 @@
 #define pop(c) \
 	c->stack[--c->sp]
 
+typedef enum {
+	RUN,
+	HALT
+} Status;
+
 typedef struct chip{
 	/* wider type first to force alignment, then no gaps? */
 	uint32_t stack[STACK_LEVELS]; 
@@ -45,6 +50,8 @@ typedef struct chip{
 	uint8_t keys[16]; 
 	uint8_t memory[MEM_SIZE]; 
 	uint8_t display[ROW][COL]; 
+
+	Status status;
 } Chip;
 
 void initialize(Chip*);
