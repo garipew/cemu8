@@ -132,17 +132,31 @@ void chip_rand_fn(ChipArgs *args){
 }
 
 void chip_draw_fn(ChipArgs *args){
+	Chip *chip = args->chip;
 	uint16_t op = args->op;
 	uint8_t x = get_x(op);
 	uint8_t y = get_y(op);
 	uint8_t height = op & 0xf;
-	fprintf(stderr, "chip_draw_fn yet not implemented, ");
-	fprintf(stderr, "but args are x=%1x, y=%1x, h=%1x\n", x, y, height);
+	uint8_t loaded_byte, bit, draw_x, draw_y;
+	chip->v[0xf] = 0;
+	for(int i = 0; i < height; i++){
+		loaded_byte = chip->memory[chip->I+i];
+		draw_y = (chip->v[y]+i) % ROW;
+		for(int j = 0; j < 8; j++){
+			bit = (loaded_byte>>(7-j))&0x1;
+			draw_x = (chip->v[x] + j) % COL;
+			if(chip->display[draw_x][draw_y] && bit){
+				chip->v[0xf] = 1;
+			}
+			chip->display[draw_x][draw_y] ^= bit;
+		}
+	}
 }
 
 int get_key(){
 	/* Blocking IO op */
 	fprintf(stderr, "get_key yet not implemented\n");
+	getchar();
 	return 0;
 }
 

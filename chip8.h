@@ -8,6 +8,7 @@
 
 #define COL 64
 #define ROW 32
+#define PIXEL 16
 
 #define MEM_SIZE 0x1000
 #define STACK_LEVELS 12
