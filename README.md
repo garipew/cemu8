@@ -17,6 +17,6 @@ To execute
 ## Next steps
 - [x] Add 60Hz clock
 - [x] Add graphics (powered by [raylib](https://github.com/raysan5/raylib))
-- [ ] Add native support for input
+- [x] Add input capture (also powered by [raylib](https://github.com/raysan5/raylib))
 - [ ] Add joystick support?
 - [ ] Windows port?

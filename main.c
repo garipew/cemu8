@@ -13,21 +13,7 @@
 // instead of at compilation.
 #define CPU_HZ 700
 
-
-// NOTE(garipew): Here lies my first sorcery, unfortunately it could not
-// survive dealing with multiple frequencies without becoming too troublesome.
-/*
-#define tick(till, T) \
-	for(	clock_t tick_t=clock(); \
-		till; \
-		tick_t=((double)(clock()-tick_t)/CLOCKS_PER_SEC)*1000000L,\
-		T > tick_t ? \
-		(usleep(T-tick_t) && (tick_t=clock())) :\
-		(tick_t=clock()))
-*/
-// Gone but not forgotten. :(
-
-#define SEC_IN_NSEC 1000000000L
+#define SEC_AS_NSEC 1000000000L
 
 typedef struct {
 	struct timespec prev;
@@ -36,7 +22,7 @@ typedef struct {
 } Clock;
 
 #define clock_get_time(c) \
-	((c.now.tv_sec-c.prev.tv_sec)*SEC_IN_NSEC)+c.now.tv_nsec-c.prev.tv_nsec
+	(((c).now.tv_sec-(c).prev.tv_sec)*SEC_AS_NSEC)+(c).now.tv_nsec-(c).prev.tv_nsec
 
 Clock cpu_clock = {0};
 Clock delay_clock = {0};
@@ -94,6 +80,16 @@ void clock_tick(){
 	}
 }
 
+void fix_schedule(const struct timespec *period, Clock *clock){
+	struct timespec sleep_time = {0};
+	clock->elapsed.tv_nsec = clock_get_time(*clock);
+	if(clock->elapsed.tv_nsec < period->tv_nsec){
+		sleep_time.tv_nsec = period->tv_nsec;
+		sleep_time.tv_nsec -= clock->elapsed.tv_nsec;
+		nanosleep(&sleep_time, NULL);
+	}
+}
+
 void co_screen(){
 	InitWindow(COL<<4, ROW<<4, "cemu8");
 	for(; !WindowShouldClose() && is_game; ){
@@ -115,13 +111,12 @@ void co_screen(){
 }
 
 void co_cpu(){
-	const struct timespec clock_period = {0,  SEC_IN_NSEC/CLOCK_HZ};
-	const struct timespec cpu_period = {0, SEC_IN_NSEC/CPU_HZ};
+	const struct timespec clock_period = {0,  SEC_AS_NSEC/CLOCK_HZ};
+	const struct timespec cpu_period = {0, SEC_AS_NSEC/CPU_HZ};
 
 	clock_gettime(CLOCK_MONOTONIC, &delay_clock.prev);
 	cpu_clock.prev = delay_clock.prev;
 
-	struct timespec sleep_time = {0};
 	for(; is_game ;){
 		clock_gettime(CLOCK_MONOTONIC, &delay_clock.now);
 		delay_clock.elapsed.tv_nsec = clock_get_time(delay_clock);
@@ -137,15 +132,25 @@ void co_cpu(){
 			yield;
 			clock_gettime(CLOCK_MONOTONIC, &cpu_clock.now);
 			cpu_clock.elapsed.tv_nsec = clock_get_time(cpu_clock);
-			if(cpu_clock.elapsed.tv_nsec < cpu_period.tv_nsec){
-				sleep_time.tv_nsec = cpu_period.tv_nsec;
-				sleep_time.tv_nsec -= cpu_clock.elapsed.tv_nsec;
-				nanosleep(&sleep_time, NULL);
-			}
+			fix_schedule(&cpu_period, &cpu_clock);
 		}
 		run_cycle();
 		/*fprintf(stderr, "tick\n");*/
 		clock_gettime(CLOCK_MONOTONIC, &cpu_clock.prev);
+	}
+}
+
+void co_input(){
+	for(int i = 0; is_game; i++){
+		if(i > 0xf){
+			yield;
+			i = 0;
+		}
+		if(IsKeyDown(keycodes[i])){
+			chip8.keys[i] = 1;
+			continue;
+		}
+		chip8.keys[i] = 0;
 	}
 }
 
@@ -166,10 +171,12 @@ int main(int argc, char **argv){
 	}
 	load_game(&chip8, rom_file);
 	fclose(rom_file);
+
 	fprintf(stdout, "\n/* %s */\n\n\n", argv[1]);
 
 	coroutine_create(co_cpu);
 	coroutine_create(co_screen);
+	coroutine_create(co_input);
 	coroutine_start();
 
 	fprintf(stdout, "\n\n/* %s */\n\n", argv[1]);

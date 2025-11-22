@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <limits.h>
+
+////////////////////////////////////////
+///	Chip
+////////////////////////////////////////
 
 #define FONT_WID 5
 
@@ -130,4 +135,11 @@ typedef void (*chipfunc_t)(ChipArgs*);
 	(op>>12)&0xf
 extern chipfunc_t fn_table[0x10];
 void load_fn_table();
+
+////////////////////////////////////////////
+///	Input
+////////////////////////////////////////////
+
+extern int keycodes[0x10];
+int get_key(Chip*);
 #endif
