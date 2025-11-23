@@ -11,7 +11,7 @@
 // TODO(garipew): There isn't a single defined value for the CPU frequency and
 // the required frequency varies across roms, this should be set at execution
 // instead of at compilation.
-#define CPU_HZ 700
+#define CPU_HZ 500
 
 #define SEC_AS_NSEC 1000000000L
 
@@ -93,8 +93,22 @@ void fix_schedule(const struct timespec *period, Clock *clock){
 }
 
 void co_screen(){
+	const struct timespec screen_period = {0,  SEC_AS_NSEC/CLOCK_HZ};
+	Clock screen_clock = {0};
+	clock_gettime(CLOCK_MONOTONIC, &screen_clock.prev);
+
 	InitWindow(COL<<4, ROW<<4, "cemu8");
 	for(; !WindowShouldClose() && is_game; ){
+		/* FPS guard */
+		clock_gettime(CLOCK_MONOTONIC, &screen_clock.now);
+		screen_clock.elapsed.tv_nsec = clock_get_time(screen_clock);
+		while(screen_clock.elapsed.tv_nsec < screen_period.tv_nsec){
+			yield;
+			clock_gettime(CLOCK_MONOTONIC, &screen_clock.now);
+			screen_clock.elapsed.tv_nsec = clock_get_time(screen_clock);
+		}
+		clock_gettime(CLOCK_MONOTONIC, &screen_clock.prev);
+
 		BeginDrawing();
 		ClearBackground(BLACK);
 		for(int x, y, pixel = 0; pixel < ROW*COL; pixel++){
@@ -106,7 +120,6 @@ void co_screen(){
 			DrawRectangle(x<<4, y<<4, PIXEL, PIXEL, WHITE);
 		}
 		EndDrawing();
-		yield;
 	}
 	CloseWindow();
 	is_game = 0;
@@ -130,13 +143,9 @@ void co_cpu(){
 
 		cpu_clock.now = delay_clock.now;
 		cpu_clock.elapsed.tv_nsec = clock_get_time(cpu_clock);
-		if(cpu_clock.elapsed.tv_nsec < cpu_period.tv_nsec){
-			yield;
-			clock_gettime(CLOCK_MONOTONIC, &cpu_clock.now);
-			cpu_clock.elapsed.tv_nsec = clock_get_time(cpu_clock);
-			fix_schedule(&cpu_period, &cpu_clock);
-		}
+		fix_schedule(&cpu_period, &cpu_clock);
 		run_cycle();
+		yield;
 		/*fprintf(stderr, "tick\n");*/
 		clock_gettime(CLOCK_MONOTONIC, &cpu_clock.prev);
 	}
