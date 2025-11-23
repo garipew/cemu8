@@ -5,13 +5,15 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <snorkel.h>
 
+#define FPS 60
 #define CLOCK_HZ 60
 // TODO(garipew): There isn't a single defined value for the CPU frequency and
 // the required frequency varies across roms, this should be set at execution
 // instead of at compilation.
-#define CPU_HZ 500
+static long CPU_HZ = 500;
 
 #define SEC_AS_NSEC 1000000000L
 
@@ -93,21 +95,23 @@ void fix_schedule(const struct timespec *period, Clock *clock){
 }
 
 void co_screen(){
-	const struct timespec screen_period = {0,  SEC_AS_NSEC/CLOCK_HZ};
-	Clock screen_clock = {0};
-	clock_gettime(CLOCK_MONOTONIC, &screen_clock.prev);
+	const struct timespec period = {0,  SEC_AS_NSEC/FPS};
+	Clock clock = {0};
+	clock_gettime(CLOCK_MONOTONIC, &clock.prev);
 
 	InitWindow(COL<<4, ROW<<4, "cemu8");
 	for(; !WindowShouldClose() && is_game; ){
 		/* FPS guard */
-		clock_gettime(CLOCK_MONOTONIC, &screen_clock.now);
-		screen_clock.elapsed.tv_nsec = clock_get_time(screen_clock);
-		while(screen_clock.elapsed.tv_nsec < screen_period.tv_nsec){
+		clock_gettime(CLOCK_MONOTONIC, &clock.now);
+		clock.elapsed.tv_nsec = clock_get_time(clock);
+		while(clock.elapsed.tv_nsec < period.tv_nsec){
+			fprintf(stderr, "still here\n");
 			yield;
-			clock_gettime(CLOCK_MONOTONIC, &screen_clock.now);
-			screen_clock.elapsed.tv_nsec = clock_get_time(screen_clock);
+			clock_gettime(CLOCK_MONOTONIC, &clock.now);
+			clock.elapsed.tv_nsec = clock_get_time(clock);
 		}
-		clock_gettime(CLOCK_MONOTONIC, &screen_clock.prev);
+		clock_gettime(CLOCK_MONOTONIC, &clock.prev);
+		fprintf(stderr, "draw\n");
 
 		BeginDrawing();
 		ClearBackground(BLACK);
@@ -159,7 +163,25 @@ void co_input(){
 }
 
 int main(int argc, char **argv){
-	if(argc < 2){
+	struct option options[2] = {0};
+	options[0].name = "cpu";
+	options[0].has_arg = required_argument;
+	options[0].val = 'c';
+	int opt;
+
+	while((opt=getopt_long(argc, argv, "c:", options, NULL)) != -1){
+		switch(opt){
+			case 'c':
+				CPU_HZ = strtol(optarg, NULL, 10);
+				break;
+			default:
+				fprintf(stderr, "%s: -%c not an option\n",
+						argv[0], opt);
+				return -1;
+		}
+	}
+
+	if(optind >= argc){
 		fprintf(stderr, "%s: Usage %s <rom-path>\n", argv[0], argv[0]);
 		return 1;
 	}
@@ -168,21 +190,21 @@ int main(int argc, char **argv){
 	initialize(&chip8);
 	args.chip = &chip8;
 
-	FILE *rom_file = fopen(argv[1], "r");
+	FILE *rom_file = fopen(argv[optind], "r");
 	if(!rom_file){
-		fprintf(stderr, "%s: Couldn't open %s\n", argv[0], argv[1]);
+		fprintf(stderr, "%s: Couldn't open %s\n", argv[0], argv[optind]);
 		return 1;
 	}
 	load_game(&chip8, rom_file);
 	fclose(rom_file);
 
-	fprintf(stdout, "\n/* %s */\n\n\n", argv[1]);
+	fprintf(stdout, "\n/* %s */\n\n\n", argv[optind]);
 
 	coroutine_create(co_cpu);
 	coroutine_create(co_screen);
 	coroutine_create(co_input);
 	coroutine_start();
 
-	fprintf(stdout, "\n\n/* %s */\n\n", argv[1]);
+	fprintf(stdout, "\n\n/* %s */\n\n", argv[optind]);
 	return 0;
 }
