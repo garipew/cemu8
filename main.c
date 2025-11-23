@@ -6,13 +6,11 @@
 #include <time.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <pthread.h>
 #include <snorkel.h>
 
 #define FPS 60
 #define CLOCK_HZ 60
-// TODO(garipew): There isn't a single defined value for the CPU frequency and
-// the required frequency varies across roms, this should be set at execution
-// instead of at compilation.
 static long CPU_HZ = 500;
 
 #define SEC_AS_NSEC 1000000000L
@@ -94,7 +92,7 @@ void fix_schedule(const struct timespec *period, Clock *clock){
 	}
 }
 
-void co_screen(){
+void* screen_thread(void *arg){
 	const struct timespec period = {0,  SEC_AS_NSEC/FPS};
 	Clock clock = {0};
 	clock_gettime(CLOCK_MONOTONIC, &clock.prev);
@@ -103,15 +101,7 @@ void co_screen(){
 	for(; !WindowShouldClose() && is_game; ){
 		/* FPS guard */
 		clock_gettime(CLOCK_MONOTONIC, &clock.now);
-		clock.elapsed.tv_nsec = clock_get_time(clock);
-		while(clock.elapsed.tv_nsec < period.tv_nsec){
-			fprintf(stderr, "still here\n");
-			yield;
-			clock_gettime(CLOCK_MONOTONIC, &clock.now);
-			clock.elapsed.tv_nsec = clock_get_time(clock);
-		}
-		clock_gettime(CLOCK_MONOTONIC, &clock.prev);
-		fprintf(stderr, "draw\n");
+		fix_schedule(&period, &clock);
 
 		BeginDrawing();
 		ClearBackground(BLACK);
@@ -124,9 +114,11 @@ void co_screen(){
 			DrawRectangle(x<<4, y<<4, PIXEL, PIXEL, WHITE);
 		}
 		EndDrawing();
+		clock_gettime(CLOCK_MONOTONIC, &clock.prev);
 	}
 	CloseWindow();
 	is_game = 0;
+	return arg;
 }
 
 void co_cpu(){
@@ -160,6 +152,14 @@ void co_input(){
 		get_key(&chip8);
 		yield;
 	}
+}
+
+void* coroutine_start_threaded(void *arg){
+	coroutine_create(co_cpu);
+	coroutine_create(co_input);
+
+	coroutine_start();
+	return arg;
 }
 
 int main(int argc, char **argv){
@@ -200,10 +200,12 @@ int main(int argc, char **argv){
 
 	fprintf(stdout, "\n/* %s */\n\n\n", argv[optind]);
 
-	coroutine_create(co_cpu);
-	coroutine_create(co_screen);
-	coroutine_create(co_input);
-	coroutine_start();
+	pthread_t graphics, system;
+	pthread_create(&system, NULL, coroutine_start_threaded, NULL);
+	pthread_create(&graphics, NULL, screen_thread, NULL);
+
+	pthread_join(system, NULL);
+	pthread_join(graphics, NULL);
 
 	fprintf(stdout, "\n\n/* %s */\n\n", argv[optind]);
 	return 0;
