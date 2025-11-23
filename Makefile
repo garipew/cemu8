@@ -6,7 +6,7 @@ chip8: main.c chip8.o
 
 all: chip8 parser sanitize
 
-sanitize:
+sanitize: main.c chip8.o
 	$(CC) $(CFLAGS) -o sanitize chip8.o main.c -lraylib -lsnorkel
 
 parser: main.c chip8.o
@@ -16,4 +16,4 @@ chip8.o: chip8.c chip8.h
 	$(CC) $(CFLAGS) -c chip8.c
 
 clean:
-	rm -rf *.o chip8 parser
+	rm -rf *.o chip8 parser sanitize
