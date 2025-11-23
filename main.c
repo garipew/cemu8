@@ -38,7 +38,11 @@ Opcode fetch_instruction(Chip *c){
 	return chip_no_op;
 }
 
+#ifdef PARSER
 void parse_instruction(Opcode op, FILE *stream, ChipArgs *args){
+#else
+void parse_instruction(Opcode op, ChipArgs *args){
+#endif
 	args->op = op;
 #ifdef PARSER
 	switch(op&0xf000){
@@ -63,8 +67,10 @@ int run_cycle(){
 #ifdef PARSER
 	fprintf(stdout, "0x%x:\t", chip8.pc);
 	fprintf(stdout, "%.2x %.2x\t", (op>>8), op&0xff);
-#endif
 	parse_instruction(op, stdout, &args);
+#else
+	parse_instruction(op, &args);
+#endif
 	if(chip8.status == RUN){
 		chip8.pc+=2;
 	}
