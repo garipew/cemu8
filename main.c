@@ -59,7 +59,7 @@ void parse_instruction(Opcode op, ChipArgs *args){
 }
 
 int run_cycle(){
-	chipfunc_t f;
+	void (*f)(ChipArgs*);
 	Opcode op = fetch_instruction(&chip8);
 	if(op == chip_no_op){
 		return 0;

@@ -135,12 +135,13 @@ typedef struct {
 OPCODE_LIST
 #undef FUNC
 
-// chip functions
-typedef void (*chipfunc_t)(ChipArgs*);
 
 #define idx_from_opcode(op) \
 	(op>>12)&0xf
-extern chipfunc_t fn_table[0x10];
+
+// chip functions
+extern void (*fn_table[0x10])(ChipArgs*);
+
 void load_fn_table();
 
 ////////////////////////////////////////////
