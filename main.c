@@ -200,9 +200,9 @@ int main(int argc, char **argv){
 
 	InitWindow(COL<<4, ROW<<4, "cemu8");
 
-	coroutine_create(co_cpu);
-	coroutine_create(co_screen);
-	coroutine_create(co_input);
+	coroutine_create(co_cpu, NULL);
+	coroutine_create(co_screen, NULL);
+	coroutine_create(co_input, NULL);
 
 	coroutine_start();
 
