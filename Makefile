@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -std=c99 -g -I/usr/local/include/snorkel -L/usr/local/lib
-CLIBS=-lraylib -lsnorkel -lpthread
+CFLAGS=-Wall -Wextra -pedantic -std=c99 -g -O3
+CLIBS=-I/usr/local/include/snorkel -L/usr/local/lib -lraylib -lsnorkel
 
 chip8: main.c chip8.o
 	$(CC) $(CFLAGS) -o chip8 chip8.o main.c $(CLIBS)
