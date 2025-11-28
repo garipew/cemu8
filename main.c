@@ -97,7 +97,7 @@ void fix_schedule(const struct timespec *period, Clock *clock){
 	}
 }
 
-void co_screen(){
+void* co_screen(){
 	const struct timespec period = {0,  SEC_AS_NSEC/FPS};
 	Clock clock = {0};
 	clock_gettime(CLOCK_MONOTONIC, &clock.prev);
@@ -106,7 +106,7 @@ void co_screen(){
 		/* FPS guard */
 		clock.elapsed.tv_nsec = clock_get_time(clock);
 		for(; clock.elapsed.tv_nsec < period.tv_nsec ;){
-			yield;
+			yield(NULL);
 			clock_gettime(CLOCK_MONOTONIC, &clock.now);
 			clock.elapsed.tv_nsec = clock_get_time(clock);
 		}
@@ -125,9 +125,10 @@ void co_screen(){
 		clock_gettime(CLOCK_MONOTONIC, &clock.prev);
 	}
 	is_game = 0;
+	return NULL;
 }
 
-void co_cpu(){
+void* co_cpu(){
 	const struct timespec clock_period = {0,  SEC_AS_NSEC/CLOCK_HZ};
 	const struct timespec cpu_period = {0, SEC_AS_NSEC/CPU_HZ};
 
@@ -147,17 +148,19 @@ void co_cpu(){
 		cpu_clock.elapsed.tv_nsec = clock_get_time(cpu_clock);
 		fix_schedule(&cpu_period, &cpu_clock);
 		run_cycle();
-		yield;
+		yield(NULL);
 		/*fprintf(stderr, "tick\n");*/
 		clock_gettime(CLOCK_MONOTONIC, &cpu_clock.prev);
 	}
+	return NULL;
 }
 
-void co_input(){
+void* co_input(){
 	for(; is_game; ){
 		get_key(&chip8);
-		yield;
+		yield(NULL);
 	}
+	return NULL;
 }
 
 int main(int argc, char **argv){
