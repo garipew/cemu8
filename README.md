@@ -1,14 +1,20 @@
 # cemu8
-This is a chip8 emulator made in C.
+> Chip8 emulator made in C.
 
-## Building
-To build, run
+## Getting started
+
+To build the project, follow the steps:
+
 ```
+git clone https://github.com/garipew/cemu8 --recursive
+cd cemu8
 make
 ```
 
-## Executing
-To execute
+### Executing
+
+To try it out
+
 ```
 ./chip8 <rom-path
 ```
