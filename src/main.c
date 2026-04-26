@@ -6,7 +6,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <snorkel.h>
+
+#define SNORKEL_IMPLEMENTATION
+#include "snorkel/snorkel_co.h"
 
 #define FPS 60
 #define CLOCK_HZ 60
