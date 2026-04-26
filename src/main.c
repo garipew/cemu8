@@ -166,6 +166,9 @@ void* co_input(){
 }
 
 int main(int argc, char **argv){
+	set_alloc(malloc);
+	set_free(free);
+
 	struct option options[2] = {0};
 	options[0].name = "cpu";
 	options[0].has_arg = required_argument;
